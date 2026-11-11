@@ -1,0 +1,74 @@
+// Pure state edits used by the UI. Nothing here mutates its inputs.
+
+import { addDays, toWork, type ISODate } from "./dates";
+import { setStatus } from "./plan";
+import { makeProject, uid } from "./store";
+import type { AppState, Plan, Project, StageKey, Status, SubMilestone, SubStageKey } from "./types";
+
+/** "+ New project": default stages and PRD steps, due 4 weeks from today. */
+export const newProject = (today: ISODate): Project =>
+  makeProject("New project", toWork(addDays(today, 28)));
+
+/** New projects go last (lowest priority). */
+export const addProject = (s: AppState, p: Project): AppState => ({
+  projects: [...s.projects, p],
+});
+
+export const editProject = (s: AppState, id: string, fn: (p: Project) => Project): AppState => ({
+  projects: s.projects.map((p) => (p.id === id ? fn(p) : p)),
+});
+
+/** Priority = row order only. Moves one project to index `to`. */
+export function moveProject(s: AppState, id: string, to: number): AppState {
+  const from = s.projects.findIndex((p) => p.id === id);
+  if (from < 0) return s;
+  const projects = [...s.projects];
+  const [p] = projects.splice(from, 1);
+  projects.splice(Math.max(0, Math.min(projects.length, to)), 0, p);
+  return { projects };
+}
+
+/** Stage days: a whole number from 0 to 60. 0 skips the stage. */
+export const clampDays = (v: number): number => Math.max(0, Math.min(60, Math.round(v || 0)));
+
+export const setDays = (p: Project, k: StageKey, v: number): Project => ({
+  ...p,
+  stages: { ...p.stages, [k]: { ...p.stages[k], est: clampDays(v) } },
+});
+
+export const setStageStatus = (p: Project, k: StageKey, v: Status, today: ISODate): Project => ({
+  ...p,
+  stages: { ...p.stages, [k]: setStatus(p.stages[k], v, today) },
+});
+
+// ---- Sub-milestones ----
+
+/** ▶ on the row: show or hide the checklist. */
+export const toggleExpanded = (p: Project): Project => ({ ...p, expanded: !p.expanded });
+
+/** Remember a group's open/closed state for this project. */
+export const setGroupOpen = (p: Project, k: SubStageKey, open: boolean): Project => ({
+  ...p,
+  groups: { ...p.groups, [k]: open },
+});
+
+/** "+ Add": PRD steps start undated; dev items start on the stage's end (or the deadline if skipped). */
+export const newSub = (p: Project, plan: Plan, k: SubStageKey): SubMilestone => ({
+  id: uid(),
+  name: "New milestone",
+  stage: k,
+  due: k === "prd" ? null : (plan[k]?.end ?? p.deadline),
+  done: false,
+});
+
+export const addSub = (p: Project, sub: SubMilestone): Project => ({ ...p, subs: [...p.subs, sub] });
+
+export const editSub = (p: Project, id: string, fn: (s: SubMilestone) => SubMilestone): Project => ({
+  ...p,
+  subs: p.subs.map((s) => (s.id === id ? fn(s) : s)),
+});
+
+export const removeSub = (p: Project, id: string): Project => ({
+  ...p,
+  subs: p.subs.filter((s) => s.id !== id),
+});

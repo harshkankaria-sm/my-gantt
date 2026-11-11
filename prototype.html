@@ -1,0 +1,505 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>My Gantt</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#09090b; --panel:#111114; --panel2:#16161a; --raise:#1c1c21;
+  --line:#26262d; --line2:#1b1b20;
+  --text:#ececf1; --muted:#8d8d98; --faint:#5c5c66;
+  --red:#ff5f5f; --redbg:rgba(255,95,95,.12); --amber:#f0b44c; --green:#62c37a;
+  --left:320px;
+}
+*{box-sizing:border-box}
+html,body{margin:0;background:var(--bg);color:var(--text)}
+body{font:14px/1.45 Inter,ui-sans-serif,system-ui,-apple-system,"Segoe UI",sans-serif;padding:28px 24px 40px}
+button,input,select{font:inherit;color:inherit}
+
+.top{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:16px}
+h1{font-size:24px;font-weight:700;margin:0;letter-spacing:-.01em}
+.btn.primary{background:#ececf1;color:#0b0b0d;border-color:#ececf1}
+.btn.primary:hover{background:#fff}
+.btn{background:var(--panel2);border:1px solid var(--line);border-radius:8px;padding:7px 12px;cursor:pointer;font-weight:500}
+.btn:hover{background:var(--raise)}
+
+.legend{display:flex;gap:14px;flex-wrap:wrap;font-size:12px;color:var(--muted);margin-bottom:12px}
+.legend span{display:flex;align-items:center;gap:6px}
+.dot{width:9px;height:9px;border-radius:3px;background:var(--c);flex:none}
+
+/* board */
+.board{border:1px solid var(--line);border-radius:12px;overflow:auto;background:var(--panel);max-height:calc(100vh - 140px);min-height:320px}
+.grid{position:relative;min-width:max-content}
+.row{display:flex;border-bottom:1px solid var(--line2)}
+.lcell{position:sticky;left:0;z-index:3;width:var(--left);flex:none;background:var(--panel);border-right:1px solid var(--line)}
+.track{position:relative;flex:none;
+  background-image:
+    repeating-linear-gradient(90deg,transparent 0 180px,rgba(255,255,255,.025) 180px 252px),
+    repeating-linear-gradient(90deg,rgba(255,255,255,.035) 0 1px,transparent 1px 36px);}
+.hrow{position:sticky;top:0;z-index:6;background:var(--panel2);border-bottom:1px solid var(--line)}
+.hrow .lcell{z-index:7;background:var(--panel2)}
+.hrow .track{background:none;display:flex}
+.dh{width:36px;flex:none;text-align:center;padding:8px 0;font-size:11px}
+.dh .m{display:block;height:14px;font-size:10px;letter-spacing:.06em;font-weight:600;color:var(--muted)}
+.dh .w{display:block;font-size:10px;font-weight:500;color:var(--faint);margin-bottom:2px}
+.dh b{display:block;font-weight:500;font-size:12px;color:var(--muted)}
+.grp{display:flex;align-items:center;gap:8px;padding:6px 12px 6px 40px;min-height:34px;background:#0f0f12;cursor:pointer;font-size:11px;letter-spacing:.06em;text-transform:uppercase;font-weight:600;color:var(--muted)}
+.grp:hover{color:var(--text)}
+.grp .caret{width:18px;height:18px;font-size:9px;display:inline-flex;align-items:center;justify-content:center}
+.srow.in{padding-left:66px}
+.dh.wk b{color:var(--faint)}
+.dh.mon b{color:var(--text)}
+.dh.today b{background:#ececf1;color:#0b0b0d;border-radius:6px;margin:0 4px;font-weight:700}
+.dh.dl b{color:var(--red)}
+.todayline{position:absolute;top:0;bottom:0;width:0;border-left:1px dashed rgba(236,236,241,.55);z-index:2;pointer-events:none}
+
+/* project row */
+.prow{display:flex;gap:10px;align-items:center;padding:12px 14px 12px 10px;min-height:76px}
+.caret{width:24px;height:24px;border:0;background:transparent;color:var(--muted);border-radius:6px;cursor:pointer;flex:none;transition:transform .15s}
+.caret:hover{background:var(--raise);color:var(--text)}
+.caret.open{transform:rotate(90deg)}
+.pinfo{flex:1;min-width:0}
+.pname{font-weight:600;font-size:15px;cursor:pointer;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.pname:hover{text-decoration:underline;text-decoration-color:var(--faint);text-underline-offset:3px}
+.donebtn{flex:none;border:1px solid var(--line);background:var(--panel2);border-radius:8px;padding:5px 9px;font-size:12px;font-weight:500;cursor:pointer;color:var(--muted)}
+.donebtn:hover{color:var(--text);border-color:#3a3a44}
+
+.bartrack{min-height:76px}
+.seg{position:absolute;top:22px;height:30px;border-radius:6px;cursor:pointer;display:flex;align-items:center;padding:0 8px;font-size:11px;font-weight:600;letter-spacing:.04em;text-transform:uppercase;overflow:hidden;white-space:nowrap}
+.seg span{overflow:hidden;text-overflow:ellipsis}
+.seg:hover{filter:brightness(1.15)}
+.seg.todo{background:color-mix(in srgb,var(--c) 18%,transparent);box-shadow:inset 0 0 0 1px color-mix(in srgb,var(--c) 50%,transparent);color:var(--c)}
+.seg.doing{background:var(--c);color:#111;box-shadow:0 0 0 2px var(--panel),0 0 0 3.5px #fff;z-index:1}
+.seg.done{background:color-mix(in srgb,var(--c) 40%,#1a1a1e);color:color-mix(in srgb,var(--c) 70%,#fff)}
+.seg.late{background:repeating-linear-gradient(135deg,var(--redbg) 0 4px,transparent 4px 8px),color-mix(in srgb,var(--c) 20%,transparent);box-shadow:inset 0 0 0 2px var(--red);color:var(--red)}
+.seg.late{z-index:2}
+.seg.late.doing{box-shadow:inset 0 0 0 2px var(--red),0 0 0 2px var(--panel),0 0 0 3.5px var(--red)}
+
+.dmd{position:absolute;width:10px;height:10px;transform:rotate(45deg);background:var(--c);border:1.5px solid var(--panel);z-index:2}
+.dmd.done{background:#3a3a42}
+.dmd.late{background:var(--red)}
+.bartrack .dmd{top:58px}
+.dmd.step{width:8px;height:8px}
+.dline{position:absolute;top:0;bottom:0;width:0;border-left:2px solid var(--red);opacity:.75;z-index:1;pointer-events:none}
+.hline{position:absolute;top:0;bottom:0;width:0;border-left:2px dashed #ececf1;opacity:.55;z-index:1;pointer-events:none}
+.legend .mk{width:0;height:14px;border-left:2px solid var(--red);opacity:.75}
+.legend .mk.h{border-left:2px dashed #ececf1;opacity:.55}
+
+/* sub-milestone rows */
+.srow{display:flex;align-items:center;gap:8px;padding:6px 12px 6px 44px;min-height:38px;background:#0f0f12}
+.srow input[type=checkbox]{accent-color:#ececf1;width:15px;height:15px;flex:none;cursor:pointer}
+.srow .nm{flex:1;min-width:0;background:transparent;border:1px solid transparent;border-radius:6px;padding:3px 6px;font-size:13px}
+.srow .nm:hover{border-color:var(--line)}
+.srow .nm:focus{outline:none;border-color:#4a4a55;background:var(--panel2)}
+.srow .nm.isdone{color:var(--faint);text-decoration:line-through}
+.cal{position:relative;flex:none}
+.cal input{position:absolute;inset:0;width:100%;height:100%;opacity:0;pointer-events:none;color-scheme:dark}
+.xbtn{border:0;background:transparent;color:var(--faint);cursor:pointer;border-radius:6px;width:22px;height:22px;flex:none}
+.xbtn:hover{background:var(--raise);color:var(--text)}
+.subtrack{min-height:38px}
+.subtrack .dmd{top:14px}
+.addsub{border:0;background:transparent;color:var(--muted);cursor:pointer;font-size:13px;padding:4px 6px;border-radius:6px}
+.addsub:hover{color:var(--text);background:var(--raise)}
+
+/* drawer */
+.scrim{position:fixed;inset:0;background:transparent;z-index:20}
+.drawer{position:fixed;top:0;right:0;bottom:0;width:min(420px,100vw);background:var(--panel);border-left:1px solid var(--line);z-index:21;display:flex;flex-direction:column}
+.dhd{display:flex;align-items:center;justify-content:space-between;padding:18px 20px;border-bottom:1px solid var(--line)}
+.dhd .title{flex:1;margin-right:8px;background:transparent;border:1px solid transparent;border-radius:6px;padding:4px 6px;font-size:16px;font-weight:600}
+.dhd .title:hover{border-color:var(--line)}
+.dhd .title:focus{outline:none;border-color:#4a4a55;background:var(--panel2)}
+.fields{display:grid;grid-template-columns:1fr 72px;gap:10px;padding:4px 8px 18px}
+.fields label{display:block;font-size:11px;letter-spacing:.06em;text-transform:uppercase;color:var(--faint);font-weight:600;margin-bottom:6px}
+.fields input,.fields select{width:100%;background:var(--panel2);border:1px solid var(--line);border-radius:6px;padding:6px 8px;font-size:13px;color-scheme:dark}
+.dbody{padding:14px 12px;overflow:auto;flex:1}
+.shead,.srowd{display:grid;grid-template-columns:12px 1fr 58px 116px;gap:10px;align-items:center}
+.shead{padding:0 8px 6px;font-size:11px;color:var(--faint);text-transform:uppercase;letter-spacing:.06em;font-weight:600}
+.srowd{padding:9px 8px;border-radius:8px}
+.srowd.hl{background:var(--raise)}
+.srowd .nm{font-weight:500}
+.srowd .dt{font-size:12px;color:var(--muted)}
+.srowd .dt.late{color:var(--red)}
+.srowd input,.srowd select{background:var(--panel2);border:1px solid var(--line);border-radius:6px;padding:5px 6px;font-size:13px;width:100%;color-scheme:dark}
+.dft{padding:14px 20px;border-top:1px solid var(--line);display:flex;justify-content:flex-end}
+
+@media (max-width:700px){
+  body{padding:20px 16px}
+  :root{--left:220px}
+  .donebtn{display:none}
+}
+</style>
+</head>
+<body>
+
+<div class="top"><h1>My Gantt</h1><button class="btn primary" data-act="new">+ New project</button></div>
+<div class="legend" id="legend"></div>
+<div class="board" id="board"></div>
+<div id="drawerRoot"></div>
+
+<script>
+const DAYW = 36;
+// phase: pre = mine, planned forward from the project's start date · post = others', planned backward from deadline
+const STAGES = [
+  {key:'prd',      name:'PRD finalise',  short:'PRD',         color:'#e46a9b', est:1, phase:'pre'},
+  {key:'review',   name:'PRD review',    short:'Review',      color:'#b57be0', est:1, phase:'pre'},
+  {key:'solution', name:'Solutioning',   short:'Solutioning', color:'#7ea6f2', est:2, phase:'pre'},
+  {key:'handover', name:'Handover call', short:'Handover',    color:'#4fb8c4', est:1, phase:'pre'},
+  {key:'dev',      name:'Dev',           short:'Dev',         color:'#d6a03c', est:5, phase:'post'},
+  {key:'qa',       name:'QA / UAT',      short:'QA',          color:'#e2703f', est:2, phase:'post'},
+  {key:'release',  name:'Release',       short:'Release',     color:'#5fbf72', est:1, phase:'post'},
+  {key:'verify',   name:'Verification',  short:'Verify',      color:'#98a6b8', est:1, phase:'post'},
+];
+const SUB_STAGES = ['prd','dev'];   // stages that carry sub-milestones
+const PRD_STEPS =['Problem framing','Research','Solution & scope','Metrics & tracking'];
+const STATUS = {todo:'Not started', doing:'In progress', done:'Done'};
+const MON = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+
+/* ---------- dates (YYYY-MM-DD strings, local time, working days Mon–Fri) ---------- */
+const pad = n => String(n).padStart(2,'0');
+const toStr = d => `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}`;
+const parse = s => { const [y,m,d] = s.split('-').map(Number); return new Date(y,m-1,d); };
+const addDays = (s,n) => { const d = parse(s); d.setDate(d.getDate()+n); return toStr(d); };
+const diff = (a,b) => Math.round((parse(b)-parse(a))/86400000);
+const isWknd = s => { const g = parse(s).getDay(); return g===0 || g===6; };
+const prevWork = s => { let d = addDays(s,-1); while(isWknd(d)) d = addDays(d,-1); return d; };
+const nextWork = s => { let d = addDays(s,1);  while(isWknd(d)) d = addDays(d,1);  return d; };
+const toWork = s => isWknd(s) ? prevWork(s) : s;
+const firstWork = s => isWknd(s) ? nextWork(s) : s;
+const spanEnd = (start,n) => { let e = start; for(let c=1;c<n;c++) e = nextWork(e); return e; };
+const workDays = (a,b) => { const out=[]; let d = firstWork(a); while(d<=b){ out.push(d); d = nextWork(d); } return out; };
+const fmt = s => { const d = parse(s); return `${d.getDate()} ${MON[d.getMonth()]}`; };
+const TODAY = toStr(new Date());
+const esc = s => String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const uid = () => Math.random().toString(36).slice(2,9);
+
+/* ---------- data ---------- */
+const KEY = 'mygantt.proto.v6';
+function makeProject(name, prdEst, stepsDone, devItems){
+  const stages = {};
+  STAGES.forEach(s => stages[s.key] = {est:s.est, status:'todo'});
+  stages.prd.est = prdEst;
+  const subs = [
+    ...PRD_STEPS.map((n,i) => ({id:uid(), name:n, stage:'prd', due:null, done:i<stepsDone})),
+    ...devItems.map(([n,d]) => ({id:uid(), name:n, stage:'dev', due:d, done:false})),
+  ];
+  return {id:uid(), name, deadline:'2026-11-30', expanded:false, stages, subs};
+}
+function sample(){
+  // array order = priority (row order only)
+  const projects = [
+    makeProject('Horoscope on web', 2, 1, [
+      ['Horoscope API integration','2026-11-19'],
+      ['Daily / weekly / monthly pages','2026-11-23'],
+    ]),
+    makeProject('SEO tech fixes', 1, 2, [
+      ['Canonical tags','2026-11-19'],
+      ['Sitemap cleanup','2026-11-20'],
+      ['Redirect chains','2026-11-23'],
+    ]),
+    makeProject('Website analytics fixes', 2, 1, [
+      ['GA4 event mapping','2026-11-19'],
+      ['Conversion tracking','2026-11-23'],
+    ]),
+  ];
+  Object.assign(projects[0].stages.prd, {status:'doing', startedOn:'2026-11-11'});  // Horoscope PRD under way
+  return {projects};
+}
+function load(){ try { const r = localStorage.getItem(KEY); return r ? JSON.parse(r) : null; } catch(e){ return null; } }
+function save(){ try { localStorage.setItem(KEY, JSON.stringify(state)); } catch(e){} }
+
+let state = load() || sample();
+let ui = {open:null, stage:null};
+const P = id => state.projects.find(p => p.id === id);
+const est = (p,s) => Math.max(0, Math.round(+p.stages[s.key].est || 0));
+
+/* ---------- planning ---------- */
+function planAll(){
+  const today = firstWork(TODAY);
+  const plans = {};
+  state.projects.forEach(p => {    // each project planned on its own
+    const sc = {};
+
+    // post-dev: backward from deadline
+    let end = toWork(p.deadline);
+    STAGES.filter(s => s.phase==='post').reverse().forEach(s => {
+      const n = est(p,s);
+      if(!n){ sc[s.key] = null; return; }
+      let start = end;
+      for(let c=1;c<n;c++) start = prevWork(start);
+      sc[s.key] = {start, end};
+      end = prevWork(start);
+    });
+    sc.handoverBy = end;
+
+    // pre-dev: forward from today; started/done stages stay on their real dates
+    let cursor = today;
+    STAGES.filter(s => s.phase==='pre').forEach(s => {
+      const st = p.stages[s.key], n = est(p,s);
+      if(!n){ sc[s.key] = null; return; }
+      let start, e;
+      if(st.status === 'done'){
+        e = st.doneOn || prevWork(today); start = st.startedOn || e;
+      } else if(st.status === 'doing' && st.startedOn){
+        start = firstWork(st.startedOn); e = spanEnd(start, n);
+      } else {
+        start = cursor < today ? today : cursor;
+        e = spanEnd(start, n);
+      }
+      sc[s.key] = {start, end:e};
+      cursor = nextWork(e);
+    });
+    plans[p.id] = sc;
+  });
+  return plans;
+}
+// late = not done and either past its end, or (pre-dev) running past "handover by"
+const isLate = (s, st, r, sc) => r && st.status !== 'done' && (r.end < TODAY || (s.phase==='pre' && r.end > sc.handoverBy));
+const current = p => STAGES.find(s => p.stages[s.key].status !== 'done' && est(p,s) > 0);
+const stageAt = (sc, date) => STAGES.find(s => sc[s.key] && sc[s.key].start <= date && date <= sc[s.key].end);
+
+function setStatus(st, v){
+  st.status = v;
+  if(v === 'todo'){ delete st.startedOn; delete st.doneOn; }
+  if(v === 'doing'){ st.startedOn = st.startedOn || TODAY; delete st.doneOn; }
+  if(v === 'done'){ st.startedOn = st.startedOn || TODAY; st.doneOn = TODAY; }
+}
+function advance(p){
+  const cur = current(p); if(!cur) return;
+  setStatus(p.stages[cur.key], 'done');
+  const nxt = STAGES.slice(STAGES.indexOf(cur)+1).find(s => est(p,s) > 0);
+  if(nxt && p.stages[nxt.key].status === 'todo') setStatus(p.stages[nxt.key], 'doing');
+}
+
+/* ---------- render ---------- */
+const $ = id => document.getElementById(id);
+
+function render(){
+  save();
+  const plans = planAll();
+  const items = state.projects.map(p => ({p, sc: plans[p.id]}));
+  $('legend').innerHTML =
+    STAGES.map(s => `<span><i class="dot" style="--c:${s.color}"></i>${s.name}</span>`).join('') +
+    `<span><i class="mk h"></i>Handover by</span><span><i class="mk"></i>Deadline</span>`;
+  renderBoard(items);
+  renderDrawer(plans);
+}
+
+function renderBoard(items){
+  const board = $('board');
+
+  let lo = TODAY, hi = TODAY;
+  items.forEach(({p,sc}) => {
+    STAGES.forEach(s => { const r = sc[s.key]; if(r){ if(r.start<lo) lo=r.start; if(r.end>hi) hi=r.end; }});
+    p.subs.forEach(s => { if(s.due){ if(s.due<lo) lo=s.due; if(s.due>hi) hi=s.due; }});
+    if(p.deadline>hi) hi=p.deadline;
+  });
+  lo = addDays(lo, -7); while(parse(lo).getDay()!==1) lo = addDays(lo,-1);
+  hi = addDays(hi, 7);  while(parse(hi).getDay()!==0) hi = addDays(hi,1);
+  const nDays = diff(lo,hi)+1, W = nDays*DAYW;
+  const x = s => diff(lo,s)*DAYW;
+  const deadlines = new Set(state.projects.map(p => p.deadline));
+
+  let head = '';
+  for(let i=0;i<nDays;i++){
+    const s = addDays(lo,i), dt = parse(s), dow = dt.getDay();
+    const cls = [dow===0||dow===6?'wk':'', dow===1?'mon':'', s===TODAY?'today':'', deadlines.has(s)?'dl':''].join(' ');
+    const m = (i===0 || dt.getDate()===1 || dow===1) ? MON[dt.getMonth()].toUpperCase() : '';
+    head += `<div class="dh ${cls}"><span class="m">${m}</span><span class="w">${'SMTWTFS'[dow]}</span><b>${dt.getDate()}</b></div>`;
+  }
+
+  let rows = '';
+  items.forEach(({p,sc}) => {
+    const cur = current(p);
+    let segs = '';
+    STAGES.forEach(s => {
+      const r = sc[s.key]; if(!r) return;
+      const st = p.stages[s.key], late = isLate(s, st, r, sc);
+      const left = x(r.start)+2, w = (diff(r.start,r.end)+1)*DAYW-4;
+      segs += `<div class="seg ${st.status}${late?' late':''}" style="left:${left}px;width:${w}px;--c:${s.color}"
+                 data-act="edit" data-id="${p.id}" data-stage="${s.key}" title="${s.name} · due ${fmt(r.end)}">
+                 ${w>=44 ? `<span>${st.status==='done'?'✓ ':''}${s.short}</span>` : ''}</div>`;
+    });
+
+    // sub-milestone position: its date if set, else spread across its stage's segment
+    const subPos = sub => {
+      if(sub.due){ const stg = stageAt(sc, sub.due); return {x: x(sub.due)+DAYW/2, c: stg ? stg.color : '#8d8d98', late: !sub.done && sub.due < TODAY, step:false, when: sub.due}; }
+      const r = sc[sub.stage]; if(!r) return null;
+      const sibs = p.subs.filter(s => !s.due && s.stage === sub.stage), i = sibs.indexOf(sub);
+      const w = (diff(r.start,r.end)+1)*DAYW;
+      return {x: x(r.start) + w*(i+1)/(sibs.length+1), c: STAGES.find(s => s.key===sub.stage).color,
+              late: !sub.done && r.end < TODAY, step:true, when: r.end};
+    };
+    const dmd = sub => {
+      const q = subPos(sub); if(!q) return '';
+      const half = q.step ? 4 : 5;
+      return `<i class="dmd${q.step?' step':''}${sub.done?' done':''}${q.late?' late':''}" style="left:${q.x-half}px;--c:${q.c}" title="${esc(sub.name)}${sub.due ? ' · ' + fmt(sub.due) : ''}"></i>`;
+    };
+    const markers = `<i class="hline" style="left:${x(sc.handoverBy)+DAYW-1}px"></i><i class="dline" style="left:${x(p.deadline)+DAYW-1}px"></i>`;
+
+    rows += `
+    <div class="row">
+      <div class="lcell prow">
+        <button class="caret ${p.expanded?'open':''}" data-act="toggle" data-id="${p.id}" title="Sub-milestones">▶</button>
+        <div class="pinfo">
+          <div class="pname" data-act="edit" data-id="${p.id}">${esc(p.name)}</div>
+        </div>
+        ${cur ? `<button class="donebtn" data-act="advance" data-id="${p.id}" title="Mark ${cur.name} done">✓ Done</button>` : ''}
+      </div>
+      <div class="track bartrack" style="width:${W}px">${markers}${segs}${p.expanded ? '' : p.subs.map(dmd).join('')}</div>
+    </div>`;
+
+    if(p.expanded){
+      const order = s => { const q = subPos(s); return q ? q.when : '9999'; };
+      SUB_STAGES.forEach(k => {
+      const stg = STAGES.find(s => s.key === k);
+      const list = p.subs.filter(s => (s.stage || 'dev') === k).sort((a,b) => order(a).localeCompare(order(b)));
+      const open = (p.groups && k in p.groups) ? p.groups[k] : (cur && cur.key === k);
+      rows += `
+        <div class="row">
+          <div class="lcell grp" data-act="group" data-id="${p.id}" data-k="${k}" data-open="${open?1:0}">
+            <span class="caret ${open?'open':''}">▶</span><i class="dot" style="--c:${stg.color}"></i>${stg.name}
+          </div>
+          <div class="track subtrack" style="width:${W}px">${markers}${open ? '' : list.map(dmd).join('')}</div>
+        </div>`;
+      if(!open) return;
+      list.forEach(s => {
+        rows += `
+        <div class="row">
+          <div class="lcell srow in">
+            <input type="checkbox" ${s.done?'checked':''} data-act="subdone" data-id="${p.id}" data-sub="${s.id}">
+            <input class="nm ${s.done?'isdone':''}" value="${esc(s.name)}" data-f="subname" data-id="${p.id}" data-sub="${s.id}">
+            <span class="cal">
+              <button class="xbtn" data-act="pickdate" title="Change date">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M8 3v4M16 3v4"/></svg>
+              </button>
+              <input type="date" tabindex="-1" value="${s.due||''}" data-f="subdue" data-id="${p.id}" data-sub="${s.id}">
+            </span>
+            <button class="xbtn" data-act="subdel" data-id="${p.id}" data-sub="${s.id}" title="Remove">×</button>
+          </div>
+          <div class="track subtrack" style="width:${W}px">${markers}${dmd(s)}</div>
+        </div>`;
+      });
+      rows += `
+        <div class="row">
+          <div class="lcell srow in"><button class="addsub" data-act="subadd" data-id="${p.id}" data-k="${k}">+ Add</button></div>
+          <div class="track subtrack" style="width:${W}px">${markers}</div>
+        </div>`;
+      });
+    }
+  });
+
+  const keep = board.firstChild ? {l:board.scrollLeft, t:board.scrollTop} : null;
+  board.innerHTML = `
+    <div class="grid">
+      <div class="row hrow"><div class="lcell"></div><div class="track" style="width:${W}px">${head}</div></div>
+      ${rows}
+      <i class="todayline" style="left:calc(var(--left) + ${x(TODAY)+DAYW/2}px)"></i>
+    </div>`;
+  if(keep){ board.scrollLeft = keep.l; board.scrollTop = keep.t; }
+  else board.scrollLeft = Math.max(0, x(TODAY) - 3*DAYW);
+}
+
+function renderDrawer(plans){
+  const root = $('drawerRoot');
+  const p = ui.open && P(ui.open);
+  if(!p){ root.innerHTML = ''; return; }
+  const sc = plans[p.id];
+  root.innerHTML = `
+    <div class="scrim" data-act="close"></div>
+    <aside class="drawer" role="dialog" aria-label="Project plan">
+      <div class="dhd"><input class="title" data-f="name" value="${esc(p.name)}" aria-label="Project name"><button class="xbtn" data-act="close" title="Close">×</button></div>
+      <div class="dbody">
+        <div class="fields">
+          <div><label>Deadline</label><input type="date" data-f="deadline" value="${p.deadline}"></div>
+          <div><label>Priority</label><select data-f="priority">
+            ${state.projects.map((_,i) => `<option value="${i}" ${state.projects.indexOf(p)===i?'selected':''}>${i+1}</option>`).join('')}
+          </select></div>
+        </div>
+        <div class="shead"><span></span><span>Stage</span><span>Days</span><span>Status</span></div>
+        ${STAGES.map(s => {
+          const st = p.stages[s.key], r = sc[s.key], late = isLate(s, st, r, sc);
+          return `<div class="srowd ${ui.stage===s.key?'hl':''}">
+            <i class="dot" style="--c:${s.color}"></i>
+            <div><div class="nm">${s.name}</div><div class="dt ${late?'late':''}">${r ? 'Due ' + fmt(r.end) : 'Skipped'}</div></div>
+            <input type="number" min="0" max="60" value="${st.est}" data-f="est" data-k="${s.key}">
+            <select data-f="status" data-k="${s.key}">
+              ${Object.entries(STATUS).map(([k,v]) => `<option value="${k}" ${st.status===k?'selected':''}>${v}</option>`).join('')}
+            </select>
+          </div>`;
+        }).join('')}
+      </div>
+      <div class="dft"><button class="btn" data-act="close">Done</button></div>
+    </aside>`;
+}
+
+/* ---------- events ---------- */
+document.addEventListener('click', e => {
+  const t = e.target.closest('[data-act]'); if(!t) return;
+  const p = t.dataset.id && P(t.dataset.id);
+  switch(t.dataset.act){
+    case 'toggle':  p.expanded = !p.expanded; break;
+    case 'edit':    ui = {open:p.id, stage:t.dataset.stage||null}; break;
+    case 'advance': advance(p); break;
+    case 'close':   ui = {open:null, stage:null}; break;
+    case 'new': {
+      const np = makeProject('New project', 1, 0, []);
+      np.deadline = toWork(addDays(TODAY, 28));
+      state.projects.push(np);
+      ui = {open:np.id, stage:null};
+      render();
+      const el = document.querySelector('.drawer [data-f="name"]');
+      if(el){ el.focus(); el.select(); }
+      return;
+    }
+    case 'pickdate': {
+      const inp = t.nextElementSibling;
+      try { inp.showPicker(); } catch(err) { inp.focus(); inp.click(); }
+      return;
+    }
+    case 'subdel':  p.subs = p.subs.filter(s => s.id !== t.dataset.sub); break;
+    case 'group':   p.groups = {...(p.groups||{}), [t.dataset.k]: t.dataset.open !== '1'}; break;
+    case 'subadd': {
+      const k = t.dataset.k || 'dev';
+      const r = planAll()[p.id][k];
+      const s = {id:uid(), name:'New milestone', stage:k, due: k === 'prd' ? null : (r ? r.end : p.deadline), done:false};
+      p.subs.push(s); render();
+      const el = document.querySelector(`[data-f="subname"][data-sub="${s.id}"]`);
+      if(el){ el.focus(); el.select(); }
+      return;
+    }
+    default: return;
+  }
+  render();
+});
+
+document.addEventListener('change', e => {
+  const t = e.target, f = t.dataset.f;
+  if(t.dataset.act === 'subdone'){ P(t.dataset.id).subs.find(s => s.id === t.dataset.sub).done = t.checked; render(); return; }
+  if(f === 'subname' || f === 'subdue'){
+    const s = P(t.dataset.id).subs.find(s => s.id === t.dataset.sub);
+    if(f === 'subname') s.name = t.value.trim() || 'Untitled';
+    else if(t.value) s.due = t.value;
+    render(); return;
+  }
+  const p = P(ui.open); if(!p) return;
+  if(f === 'name')     p.name = t.value.trim() || 'Untitled project';
+  if(f === 'deadline' && t.value) p.deadline = t.value;
+  if(f === 'priority'){ state.projects.splice(state.projects.indexOf(p), 1); state.projects.splice(+t.value, 0, p); }
+  if(f === 'est')    p.stages[t.dataset.k].est = Math.max(0, Math.min(60, Math.round(+t.value || 0)));
+  if(f === 'status') setStatus(p.stages[t.dataset.k], t.value);
+  ui.stage = t.dataset.k || ui.stage;
+  render();
+});
+
+document.addEventListener('keydown', e => {
+  if(e.key === 'Escape' && ui.open){ ui = {open:null, stage:null}; render(); }
+  if(e.key === 'Enter' && e.target.matches('.srow .nm, .dhd .title')) e.target.blur();
+});
+
+render();
+</script>
+</body>
+</html>
