@@ -32,7 +32,7 @@ Each phase runs in a **new chat**. Start it by pasting the phase's **Kick-off pr
 - [x] Phase 3 — Project panel, new project, ✓ Done
 - [x] Phase 4 — Sub-milestones
 - [x] Phase 5 — Parity check + real data
-- [ ] Phase 6 — Deploy to Vercel
+- [x] Phase 6 — Deploy to Vercel
 
 ---
 
