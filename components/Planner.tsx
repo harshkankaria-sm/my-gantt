@@ -41,7 +41,8 @@ export function Planner() {
 
   const index = state && ui.open ? state.projects.findIndex((p) => p.id === ui.open) : -1;
   const project = index >= 0 ? state!.projects[index] : null;
-  const today = todayStr();
+  // Only in the browser (state is null while prerendering), so today is never baked into the build.
+  const today = state ? todayStr() : "";
 
   return (
     <>
