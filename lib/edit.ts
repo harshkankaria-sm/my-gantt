@@ -3,7 +3,8 @@
 import { addDays, toWork, type ISODate } from "./dates";
 import { setStatus } from "./plan";
 import { makeProject, uid } from "./store";
-import type { AppState, Plan, Project, StageKey, Status, SubMilestone, SubStageKey } from "./types";
+import { NEW_STEP_DAYS } from "./stages";
+import type { AppState, Project, StageKey, Status, SubMilestone, SubStageKey } from "./types";
 
 /** "+ New project": default stages and PRD steps, due 4 weeks from today. */
 export const newProject = (today: ISODate): Project =>
@@ -52,12 +53,12 @@ export const setGroupOpen = (p: Project, k: SubStageKey, open: boolean): Project
   groups: { ...p.groups, [k]: open },
 });
 
-/** "+ Add": PRD steps start undated; dev items start on the stage's end (or the deadline if skipped). */
-export const newSub = (p: Project, plan: Plan, k: SubStageKey): SubMilestone => ({
+/** "+ Add": a new step at the end of its stage, NEW_STEP_DAYS long. */
+export const newSub = (k: SubStageKey): SubMilestone => ({
   id: uid(),
   name: "New milestone",
   stage: k,
-  due: k === "prd" ? null : (plan[k]?.end ?? p.deadline),
+  days: NEW_STEP_DAYS,
   done: false,
 });
 

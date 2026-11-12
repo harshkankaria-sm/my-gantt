@@ -3,6 +3,7 @@
 import { useEffect, useRef, type CSSProperties } from "react";
 import type { ISODate } from "@/lib/dates";
 import { editProject, moveProject, setDays, setStageStatus } from "@/lib/edit";
+import { est, stepDays } from "@/lib/plan";
 import { STAGES, STATUS } from "@/lib/stages";
 import { update } from "@/lib/store";
 import type { Project, StageKey, Status } from "@/lib/types";
@@ -91,26 +92,39 @@ export function Panel({ project: p, index, count, today, stage, fresh, onStage, 
           </div>
           {STAGES.map((def) => {
             const st = p.stages[def.key];
+            // A stage with steps lasts the sum of their days: shown, not edited here.
+            const fromSteps = stepDays(p, def.key) !== null;
             return (
               <div key={def.key} className={cx(s.srowd, stage === def.key && s.hl)}>
                 <i className={s.dot} style={{ "--c": def.color } as CSSProperties} />
                 <div className={s.nm}>{def.name}</div>
-                <input
-                  type="number"
-                  min={0}
-                  max={60}
-                  aria-label={`${def.name} days`}
-                  defaultValue={st.est}
-                  onChange={(e) => {
-                    if (e.target.value === "") return;
-                    edit((q) => setDays(q, def.key, Number(e.target.value)));
-                    onStage(def.key);
-                  }}
-                  onBlur={(e) => {
-                    // Show the saved (clamped) value, e.g. after clearing the field or typing 99.
-                    e.target.value = String(p.stages[def.key].est);
-                  }}
-                />
+                {fromSteps ? (
+                  <input
+                    key="steps"
+                    type="number"
+                    aria-label={`${def.name} days`}
+                    value={est(p, def)}
+                    disabled
+                  />
+                ) : (
+                  <input
+                    key="own"
+                    type="number"
+                    min={0}
+                    max={60}
+                    aria-label={`${def.name} days`}
+                    defaultValue={st.est}
+                    onChange={(e) => {
+                      if (e.target.value === "") return;
+                      edit((q) => setDays(q, def.key, Number(e.target.value)));
+                      onStage(def.key);
+                    }}
+                    onBlur={(e) => {
+                      // Show the saved (clamped) value, e.g. after clearing the field or typing 99.
+                      e.target.value = String(p.stages[def.key].est);
+                    }}
+                  />
+                )}
                 <select
                   aria-label={`${def.name} status`}
                   value={st.status}

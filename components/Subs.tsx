@@ -1,9 +1,9 @@
 "use client";
 
-import { Fragment, type CSSProperties, type MouseEvent, type ReactNode } from "react";
+import { Fragment, type CSSProperties, type ReactNode } from "react";
 import { fmt, type ISODate } from "@/lib/dates";
 import { addSub, editProject, editSub, newSub, removeSub, setGroupOpen } from "@/lib/edit";
-import { SUB_STAGES, stageDef } from "@/lib/stages";
+import { STEP_DAYS, SUB_STAGES, stageDef } from "@/lib/stages";
 import { update } from "@/lib/store";
 import { groupItems, groupOpen, subSpot } from "@/lib/subs";
 import type { Plan, Project, SubMilestone } from "@/lib/types";
@@ -26,25 +26,13 @@ interface DiamondProps {
 export function Diamond({ p, plan, sub, lo, today }: DiamondProps) {
   const q = subSpot(p, plan, sub, lo, today);
   if (!q) return null;
-  const half = q.step ? 4 : 5;
   return (
     <i
-      className={cx(s.dmd, q.step && s.step, sub.done && s.done, q.late && s.late)}
-      style={{ left: q.x * DAYW - half, ...color(q.color) }}
-      title={sub.due ? `${sub.name} · ${fmt(sub.due)}` : sub.name}
+      className={cx(s.dmd, sub.done && s.done, q.late && s.late)}
+      style={{ left: q.x * DAYW - 5, ...color(q.color) }}
+      title={`${sub.name} · ${fmt(q.end)}`}
     />
   );
-}
-
-/** Open the hidden date input's picker from the calendar icon. */
-function pickDate(e: MouseEvent<HTMLButtonElement>) {
-  const input = e.currentTarget.nextElementSibling as HTMLInputElement;
-  try {
-    input.showPicker();
-  } catch {
-    input.focus();
-    input.click();
-  }
 }
 
 interface SubRowsProps {
@@ -71,7 +59,7 @@ export function SubRows({ p, plan, lo, today, width, markers, onAdded }: SubRows
     <>
       {SUB_STAGES.map((k) => {
         const def = stageDef(k);
-        const items = groupItems(p, plan, k);
+        const items = groupItems(p, k);
         const open = groupOpen(p, k);
         return (
           <Fragment key={k}>
@@ -108,32 +96,23 @@ export function SubRows({ p, plan, lo, today, width, markers, onAdded }: SubRows
                       }}
                       onKeyDown={(e) => e.key === "Enter" && e.currentTarget.blur()}
                     />
-                    <span className={s.cal}>
-                      <button className={s.xbtn} onClick={pickDate} aria-label="Change date">
-                        <svg
-                          width="14"
-                          height="14"
-                          viewBox="0 0 24 24"
-                          fill="none"
-                          stroke="currentColor"
-                          strokeWidth="2"
-                          strokeLinecap="round"
-                        >
-                          <rect x="3" y="5" width="18" height="16" rx="2" />
-                          <path d="M3 10h18M8 3v4M16 3v4" />
-                        </svg>
-                      </button>
-                      <input
-                        type="date"
-                        tabIndex={-1}
-                        aria-label="Date"
-                        value={sub.due ?? ""}
-                        onChange={(e) => {
-                          const due = e.target.value;
-                          if (due) edit((q) => editSub(q, sub.id, (x) => ({ ...x, due })));
-                        }}
-                      />
-                    </span>
+                    <select
+                      className={s.days}
+                      aria-label="Days"
+                      value={sub.days}
+                      onChange={(e) => {
+                        const days = Number(e.target.value);
+                        edit((q) => editSub(q, sub.id, (x) => ({ ...x, days })));
+                      }}
+                    >
+                      {(STEP_DAYS.includes(sub.days) ? STEP_DAYS : [...STEP_DAYS, sub.days].sort((a, b) => a - b)).map(
+                        (d) => (
+                          <option key={d} value={d}>
+                            {d}d
+                          </option>
+                        ),
+                      )}
+                    </select>
                     <button
                       className={s.xbtn}
                       onClick={() => edit((q) => removeSub(q, sub.id))}
@@ -155,7 +134,7 @@ export function SubRows({ p, plan, lo, today, width, markers, onAdded }: SubRows
                   <button
                     className={s.addsub}
                     onClick={() => {
-                      const sub = newSub(p, plan, k);
+                      const sub = newSub(k);
                       edit((q) => addSub(q, sub));
                       onAdded(sub.id);
                     }}

@@ -27,7 +27,8 @@ export interface SubMilestone {
   id: string;
   name: string;
   stage: SubStageKey;
-  due: ISODate | null;
+  /** Working days, one of STEP_DAYS. Steps run one after another inside their stage. */
+  days: number;
   done: boolean;
 }
 

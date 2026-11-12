@@ -1,41 +1,33 @@
 import { describe, expect, it } from "vitest";
 import { fmt, isWknd, nextWork, prevWork, spanEnd, diff } from "./dates";
-import { advance, current, isLate, planAll, planProject, setStatus } from "./plan";
+import { advance, current, est, isLate, planAll, planProject, setStatus, stepDays } from "./plan";
 import { stageDef } from "./stages";
 import { makeProject, uid } from "./store";
-import type { ISODate } from "./dates";
 import type { AppState, Project, StageKey } from "./types";
 
 // Fixture: the 3 projects from product_sense §1, in priority order.
-function fixtureProject(
-  name: string,
-  prdEst: number,
-  stepsDone: number,
-  devItems: [string, ISODate][],
-): Project {
+// PRD has no steps here, so its own days apply; dev items add up to dev's 5 days.
+function fixtureProject(name: string, prdEst: number, devItems: [string, number][]): Project {
   const p = makeProject(name, "2026-11-30");
   p.stages.prd.est = prdEst;
-  p.subs.forEach((s, i) => (s.done = i < stepsDone));
-  p.subs.push(
-    ...devItems.map(([n, d]) => ({ id: uid(), name: n, stage: "dev" as const, due: d, done: false })),
-  );
+  p.subs = devItems.map(([n, days]) => ({ id: uid(), name: n, stage: "dev" as const, days, done: false }));
   return p;
 }
 
 function seed(): AppState {
   const projects = [
-    fixtureProject("Horoscope feature live on web", 2, 1, [
-      ["Horoscope API integration", "2026-11-19"],
-      ["Daily / weekly / monthly pages", "2026-11-23"],
+    fixtureProject("Horoscope feature live on web", 2, [
+      ["Horoscope API integration", 3],
+      ["Daily / weekly / monthly pages", 2],
     ]),
-    fixtureProject("SEO tech fixes", 1, 2, [
-      ["Canonical tags", "2026-11-19"],
-      ["Sitemap cleanup", "2026-11-20"],
-      ["Redirect chains", "2026-11-23"],
+    fixtureProject("SEO tech fixes", 1, [
+      ["Canonical tags", 2],
+      ["Sitemap cleanup", 2],
+      ["Redirect chains", 1],
     ]),
-    fixtureProject("Website analytics fixes", 2, 1, [
-      ["GA4 event mapping", "2026-11-19"],
-      ["Conversion tracking", "2026-11-23"],
+    fixtureProject("Website analytics fixes", 2, [
+      ["GA4 event mapping", 3],
+      ["Conversion tracking", 2],
     ]),
   ];
   // Horoscope PRD is under way.
@@ -46,9 +38,10 @@ function seed(): AppState {
 // Nov 2026: Mondays are 9, 16, 23, 30. Today is Wed 11 Nov.
 const TODAY = "2026-11-11";
 
-// Engine tests pin PRD at 1 day so they don't depend on the default.
+// Engine tests pin PRD at 1 day (no steps) so they don't depend on the default.
 const proj = (edit?: (p: Project) => void): Project => {
   const p = makeProject("Test", "2026-11-30");
+  p.subs = [];
   p.stages.prd.est = 1;
   edit?.(p);
   return p;
@@ -69,6 +62,32 @@ describe("working days", () => {
   it("formats and diffs", () => {
     expect(fmt("2026-11-30")).toBe("30 Nov");
     expect(diff("2026-11-11", "2026-11-30")).toBe(19);
+  });
+});
+
+describe("stages with steps", () => {
+  it("last the sum of their steps' days, rounded up", () => {
+    const p = makeProject("Test", "2026-11-30"); // PRD steps 0.5 + 1 + 1 + 2 + 0.5
+    expect(stepDays(p, "prd")).toBe(5);
+    expect(est(p, stageDef("prd"))).toBe(5);
+    p.subs[0].days = 1; // 5.5 → 6
+    expect(est(p, stageDef("prd"))).toBe(6);
+    expect(range(p, "prd")).toEqual({ start: "2026-11-11", end: "2026-11-18" });
+  });
+
+  it("use their own days when they have no steps", () => {
+    const p = makeProject("Test", "2026-11-30");
+    expect(stepDays(p, "dev")).toBeNull();
+    expect(est(p, stageDef("dev"))).toBe(5);
+    p.subs.push({ id: uid(), name: "API", stage: "dev", days: 2, done: false });
+    expect(est(p, stageDef("dev"))).toBe(2);
+    expect(range(p, "dev")).toEqual({ start: "2026-11-23", end: "2026-11-24" });
+  });
+
+  it("count done steps too", () => {
+    const p = makeProject("Test", "2026-11-30");
+    p.subs.forEach((s) => (s.done = true));
+    expect(est(p, stageDef("prd"))).toBe(5);
   });
 });
 

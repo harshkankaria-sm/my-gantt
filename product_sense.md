@@ -4,7 +4,7 @@
 
 - **Owner:** Harsh (APM)
 - **Written:** 11 Nov 2026
-- **Status:** Draft v5. The deadline is the only date I enter; the tool doesn't shift one project because of another
+- **Status:** Draft v6. The deadline is the only date I enter; the tool doesn't shift one project because of another
 
 ---
 
@@ -36,7 +36,7 @@ I control the stages before dev. Dev and everything after belong to others, and 
 
 ## 3. Pain points
 
-1. **P1 (main): When a new project comes in, I can't quickly turn its deadline into a plan.** I need all the SOP steps laid out, how long each takes, how much time I have before dev must start, and how the project sits next to my other projects, in about 5 minutes.
+1. **P1 (main): When a new project comes in, I can't quickly turn its deadline into a plan.** I need all the SOP steps laid out, how long each takes (I estimate PRD and dev by their steps, in days, not by picking dates), how much time I have before dev must start, and how the project sits next to my other projects, in about 5 minutes.
 2. **P2: Once planned, I lose track of where each project stands against the plan.** I need to see what's late, and progress inside a stage (PRD steps, dev items).
 
 ---
@@ -68,7 +68,7 @@ The timeline has two halves joined by one date per project.
 
 ### Rules
 
-1. Plans use working days (Mon–Fri). Each stage has one estimate, including any time spent waiting on others.
+1. Plans use working days (Mon–Fri). Each stage has one estimate, including any time spent waiting on others. A stage with steps (PRD, dev) lasts the sum of its steps' days, rounded up to whole days; the steps run one after another inside it.
 2. Each project is planned on its own. The tool never moves one project because of another.
 3. The only date I enter is the deadline. Stages not yet started are planned from today, so marking a stage done re-plans the rest from today.
 4. A pre-dev stage running past "handover by", or a stage past its end date and not done, shows red. There's no separate warning.
@@ -77,7 +77,7 @@ The timeline has two halves joined by one date per project.
 ### New project setup
 
 1. **+ New project** → name and deadline.
-2. The tool adds all 8 stages with default days and the 4 PRD steps (problem framing, research, solution & scope, metrics & tracking).
+2. The tool adds all 8 stages with default days and the 5 PRD steps with default days: problem framing 0.5, research 1, solution & scope 1, design 2 (with the designer), metrics & tracking 0.5.
 3. In the same panel I set the priority, stage days and the status of anything already done.
 4. The timeline updates live behind the panel.
 
@@ -99,13 +99,14 @@ The timeline has two halves joined by one date per project.
 | Late stage in red | P2 |
 | One-click "✓ Done" on the current stage; re-plans from today | P2 |
 | Sub-milestones (PRD steps, dev items): diamonds under the bar, expandable checklist | P2 |
+| Days per step (0.5, 1, 2, 3, 5, 8, 13) instead of a date; the stage's days are their sum (read-only in the panel); each diamond sits where its step ends | P1 |
 | Checklist grouped by stage (PRD finalise, Dev), with a collapsible header per group. The current stage's group is open by default and the others are collapsed. A collapsed group still shows its diamonds on its header row; "+ Add" sits inside each group | P2 (focus on current stage), P1 (other stages while planning) |
 | Saved in the browser (localStorage) | Required by all of the above |
 
 ### Out
 
 - **Drag to resize or move bars:** planned for after the MVP; it would replace the setup panel.
-- **Removed earlier:** done count ("1/4") on collapsed sub-milestone groups; start date input; automatic shifting of projects to avoid clashes; delete or archive project; sample/starter project (the app starts empty); hover tooltips on buttons; stage due date text in the panel; showing clashes; overflow warning; health chips; focus strip; per-row status badge; date text next to diamonds; subtitles, counters and totals; estimate-vs-actual tracking; per-step estimates for PRD steps; different PRD steps per project type; reset, export or import; filters; list view; tags; sharing; Jira sync; backend.
+- **Removed earlier:** done count ("1/4") on collapsed sub-milestone groups; start date input; automatic shifting of projects to avoid clashes; delete or archive project; sample/starter project (the app starts empty); hover tooltips on buttons; stage due date text in the panel; showing clashes; overflow warning; health chips; focus strip; per-row status badge; date text next to diamonds; subtitles, counters and totals; estimate-vs-actual tracking; a date per step; different PRD steps per project type; reset, export or import; filters; list view; tags; sharing; Jira sync; backend.
 
 New needs follow this order: add the pain point to §3 → ideate → add to scope → build.
 
@@ -131,4 +132,4 @@ New needs follow this order: add the pain point to §3 → ideate → add to sco
 
 ## 9. Open questions
 
-- None open. Decided 11 Nov 2026: default stage days are PRD 2 · Review 1 · Solutioning 2 · Handover 1 · Dev 5 · QA 2 · Release 1 · Verify 1 (to tune after this cycle).
+- None open. Decided 11 Nov 2026: default stage days are PRD 2 · Review 1 · Solutioning 2 · Handover 1 · Dev 5 · QA 2 · Release 1 · Verify 1 (to tune after this cycle). Decided 12 Nov 2026: PRD and dev are estimated per step in days; PRD's default is now 5 (the sum of its steps), and a new dev item starts at 1 day.

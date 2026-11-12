@@ -62,11 +62,6 @@ export function Board({ state, onEdit, onAdvance }: BoardProps) {
         if (r.start < lo) lo = r.start;
         if (r.end > hi) hi = r.end;
       }
-      for (const sub of p.subs) {
-        if (!sub.due) continue;
-        if (sub.due < lo) lo = sub.due;
-        if (sub.due > hi) hi = sub.due;
-      }
       if (p.deadline > hi) hi = p.deadline;
     }
     lo = addDays(lo, -7);

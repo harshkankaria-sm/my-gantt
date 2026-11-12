@@ -7,78 +7,68 @@ import { groupItems, groupOpen, subSpot } from "./subs";
 import type { Project, SubMilestone } from "./types";
 
 // Nov 2026: Mondays are 9, 16, 23, 30. Today is Wed 11 Nov.
-// Default plan due 30 Nov: PRD 11 · Review 12 · Solutioning 13–16 · Handover 17 · Dev 18–24.
+// Default plan due 30 Nov: PRD 11–17 · Dev 18–24.
 const TODAY = "2026-11-11";
 const LO = "2026-11-02";
 
-const dev = (name: string, due: string | null, done = false): SubMilestone => ({
+const dev = (name: string, days: number, done = false): SubMilestone => ({
   id: uid(),
   name,
   stage: "dev",
-  due,
+  days,
   done,
 });
 
-// PRD pinned at 1 day so positions don't depend on the default.
-const proj = (): Project => {
-  const p = makeProject("Test", "2026-11-30");
-  p.stages.prd.est = 1;
-  return p;
-};
+// Default PRD steps 0.5 · 1 · 1 · 2 · 0.5 = 5 days: 11, 12, 13, 16, 17 Nov.
+const proj = (): Project => makeProject("Test", "2026-11-30");
 
 describe("subSpot", () => {
-  it("puts a dated item at the centre of its day, coloured by the stage it falls in", () => {
+  it("runs steps one after another; each sits where it ends, in its stage's colour", () => {
     const p = proj();
-    const sub = dev("API", "2026-11-19");
-    p.subs.push(sub);
-    expect(subSpot(p, planProject(p, TODAY), sub, LO, TODAY)).toEqual({
-      x: 17.5,
-      color: stageDef("dev").color,
-      late: false,
-      step: false,
-    });
-  });
-
-  it("is grey when the date falls outside every stage", () => {
-    // (Weekends inside a stage's span count as that stage.)
-    const p = proj();
-    const sub = dev("After the deadline", "2026-12-03");
-    p.subs.push(sub);
-    expect(subSpot(p, planProject(p, TODAY), sub, LO, TODAY)?.color).toBe("#8d8d98");
-  });
-
-  it("spreads undated items evenly across their stage's segment", () => {
-    const p = proj(); // 4 undated PRD steps; PRD is 11 Nov, 1 day → x 9..10
     const plan = planProject(p, TODAY);
-    const xs = p.subs.map((s) => Math.round(subSpot(p, plan, s, LO, TODAY)!.x * 10) / 10);
-    expect(xs).toEqual([9.2, 9.4, 9.6, 9.8]);
-    expect(subSpot(p, plan, p.subs[0], LO, TODAY)?.step).toBe(true);
+    // x from LO: 11 Nov is 9. Mid-day ends sit at +0.25, whole-day ends at +0.75.
+    expect(p.subs.map((s) => subSpot(p, plan, s, LO, TODAY)!.x)).toEqual([9.25, 10.25, 11.25, 15.25, 15.75]);
+    expect(p.subs.map((s) => subSpot(p, plan, s, LO, TODAY)!.end)).toEqual([
+      "2026-11-11",
+      "2026-11-12",
+      "2026-11-13",
+      "2026-11-17",
+      "2026-11-17",
+    ]);
+    expect(subSpot(p, plan, p.subs[0], LO, TODAY)?.color).toBe(stageDef("prd").color);
   });
 
-  it("is late when not done and past its date (or its stage's end)", () => {
+  it("places dev items from dev's start", () => {
     const p = proj();
-    const past = dev("Past", "2026-11-10");
-    const pastDone = dev("Past done", "2026-11-10", true);
-    p.subs.push(past, pastDone);
+    const [a, b] = [dev("API", 3), dev("Pages", 2)];
+    p.subs.push(a, b); // dev = 5 days: 18–24 Nov
     const plan = planProject(p, TODAY);
-    expect(subSpot(p, plan, past, LO, TODAY)?.late).toBe(true);
-    expect(subSpot(p, plan, pastDone, LO, TODAY)?.late).toBe(false);
+    expect(subSpot(p, plan, a, LO, TODAY)?.end).toBe("2026-11-20");
+    expect(subSpot(p, plan, b, LO, TODAY)?.end).toBe("2026-11-24");
+  });
+
+  it("stops at a done stage's real end", () => {
+    const p = proj();
+    p.stages.prd = { est: 5, status: "done", startedOn: "2026-11-09", doneOn: "2026-11-10" };
+    const plan = planProject(p, TODAY);
+    expect(subSpot(p, plan, p.subs[4], LO, TODAY)?.end).toBe("2026-11-10");
+  });
+
+  it("is late when not done and past its end", () => {
+    const p = proj();
+    const plan = planProject(p, TODAY);
     expect(subSpot(p, plan, p.subs[0], LO, "2026-11-12")?.late).toBe(true);
-  });
-
-  it("has no spot when undated and its stage is skipped", () => {
-    const p = proj();
-    p.stages.prd.est = 0;
-    expect(subSpot(p, planProject(p, TODAY), p.subs[0], LO, TODAY)).toBeNull();
+    expect(subSpot(p, plan, p.subs[1], LO, "2026-11-12")?.late).toBe(false);
+    p.subs[0].done = true;
+    expect(subSpot(p, plan, p.subs[0], LO, "2026-11-12")?.late).toBe(false);
   });
 });
 
 describe("groups", () => {
-  it("lists a group's items in date order", () => {
+  it("lists a group's items in list order", () => {
     const p = proj();
-    p.subs.push(dev("Late", "2026-11-23"), dev("Undated", null), dev("Early", "2026-11-19"));
-    const names = groupItems(p, planProject(p, TODAY), "dev").map((s) => s.name);
-    expect(names).toEqual(["Early", "Late", "Undated"]); // undated sits at dev's end, 24 Nov
+    p.subs.push(dev("B", 1), dev("A", 2));
+    expect(groupItems(p, "dev").map((s) => s.name)).toEqual(["B", "A"]);
   });
 
   it("opens only the current stage's group by default", () => {
@@ -108,23 +98,18 @@ describe("sub-milestone edits", () => {
     expect(p.expanded).toBe(false);
   });
 
-  it("adds PRD steps undated and dev items on dev's end (or the deadline)", () => {
-    const p = proj();
-    const plan = planProject(p, TODAY);
-    expect(newSub(p, plan, "prd").due).toBeNull();
-    expect(newSub(p, plan, "dev").due).toBe("2026-11-24");
-    p.stages.dev.est = 0;
-    expect(newSub(p, planProject(p, TODAY), "dev").due).toBe("2026-11-30");
+  it("adds a 1-day step", () => {
+    expect(newSub("dev")).toMatchObject({ stage: "dev", days: 1, done: false });
   });
 
-  it("ticks, renames, re-dates and removes one item", () => {
+  it("ticks, renames, re-sizes and removes one item", () => {
     const p0 = proj();
-    const sub = newSub(p0, planProject(p0, TODAY), "dev");
+    const sub = newSub("dev");
     const p = addSub(p0, sub);
-    expect(p.subs).toHaveLength(5);
-    const edited = editSub(p, sub.id, (s) => ({ ...s, done: true, name: "API", due: "2026-11-20" }));
-    expect(edited.subs.at(-1)).toEqual({ ...sub, done: true, name: "API", due: "2026-11-20" });
+    expect(p.subs).toHaveLength(6);
+    const edited = editSub(p, sub.id, (s) => ({ ...s, done: true, name: "API", days: 3 }));
+    expect(edited.subs.at(-1)).toEqual({ ...sub, done: true, name: "API", days: 3 });
     expect(edited.subs[0]).toBe(p.subs[0]);
-    expect(removeSub(edited, sub.id).subs).toHaveLength(4);
+    expect(removeSub(edited, sub.id).subs).toHaveLength(5);
   });
 });

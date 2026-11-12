@@ -15,18 +15,19 @@ const three = (): AppState => ({
 });
 
 describe("newProject", () => {
-  it("has all 8 stages at default days, the 4 PRD steps, and is due in 4 weeks", () => {
+  it("has all 8 stages at default days, the 5 PRD steps with days, and is due in 4 weeks", () => {
     const p = newProject(TODAY);
     expect(p.name).toBe("New project");
     expect(p.deadline).toBe("2026-12-09");
     expect(Object.keys(p.stages)).toHaveLength(8);
-    expect(p.stages.prd).toEqual({ est: 2, status: "todo" });
+    expect(p.stages.prd).toEqual({ est: 5, status: "todo" });
     expect(p.stages.dev).toEqual({ est: 5, status: "todo" });
-    expect(p.subs.map((s) => s.name)).toEqual([
-      "Problem framing",
-      "Research",
-      "Solution & scope",
-      "Metrics & tracking",
+    expect(p.subs.map((s) => [s.name, s.days])).toEqual([
+      ["Problem framing", 0.5],
+      ["Research", 1],
+      ["Solution & scope", 1],
+      ["Design", 2],
+      ["Metrics & tracking", 0.5],
     ]);
   });
 
@@ -79,6 +80,6 @@ describe("stage edits", () => {
     const next = editProject(s, id, (p) => setStageStatus(setDays(p, "prd", 3), "prd", "doing", TODAY));
     expect(next.projects[1].stages.prd).toEqual({ est: 3, status: "doing", startedOn: TODAY });
     expect(next.projects[0]).toBe(s.projects[0]);
-    expect(s.projects[1].stages.prd).toEqual({ est: 2, status: "todo" });
+    expect(s.projects[1].stages.prd).toEqual({ est: 5, status: "todo" });
   });
 });

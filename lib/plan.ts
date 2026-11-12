@@ -3,11 +3,25 @@
 
 import { firstWork, nextWork, prevWork, spanEnd, toWork, type ISODate } from "./dates";
 import { STAGES, type StageDef } from "./stages";
-import type { Plan, Project, Range, StageState, Status } from "./types";
+import type { Plan, Project, Range, StageKey, StageState, Status } from "./types";
 
-/** A stage's estimate as a whole number of working days, ≥ 0. */
-export const est = (p: Project, s: StageDef): number =>
-  Math.max(0, Math.round(Number(p.stages[s.key].est) || 0));
+/** Total days of a stage's steps (unrounded), or null if it has none. */
+export function stepDays(p: Project, key: StageKey): number | null {
+  const steps = p.subs.filter((x) => x.stage === key);
+  if (!steps.length) return null;
+  // Rounded to tenths so 0.5 + 0.5 + … doesn't pick up float error.
+  return Math.round(steps.reduce((a, x) => a + (Number(x.days) || 0), 0) * 10) / 10;
+}
+
+/**
+ * A stage's estimate as a whole number of working days, ≥ 0.
+ * A stage with steps lasts the sum of their days, rounded up.
+ */
+export function est(p: Project, s: StageDef): number {
+  const sum = stepDays(p, s.key);
+  if (sum !== null) return Math.ceil(sum);
+  return Math.max(0, Math.round(Number(p.stages[s.key].est) || 0));
+}
 
 /** Plan one project. Each project is planned on its own. */
 export function planProject(p: Project, todayRaw: ISODate): Plan {

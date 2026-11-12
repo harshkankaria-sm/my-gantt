@@ -291,10 +291,6 @@
 .dmd.late {
   background: var(--red);
 }
-.dmd.step {
-  width: 8px;
-  height: 8px;
-}
 .bartrack .dmd {
   top: 58px;
 }
@@ -366,18 +362,24 @@
   color: var(--faint);
   text-decoration: line-through;
 }
-.cal {
-  position: relative;
+.days {
   flex: none;
-}
-.cal input {
-  position: absolute;
-  inset: 0;
-  width: 100%;
-  height: 100%;
-  opacity: 0;
-  pointer-events: none;
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: 6px;
+  padding: 3px 4px;
+  font-size: 13px;
+  color: var(--muted);
+  cursor: pointer;
   color-scheme: dark;
+}
+.days:hover {
+  border-color: var(--line);
+}
+.days:focus {
+  outline: none;
+  border-color: #4a4a55;
+  background: var(--panel2);
 }
 .xbtn {
   border: 0;
