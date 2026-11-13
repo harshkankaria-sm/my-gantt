@@ -93,7 +93,7 @@
 .shead,
 .srowd {
   display: grid;
-  grid-template-columns: 12px 1fr 58px 116px;
+  grid-template-columns: 12px 1fr 58px 26px 116px;
   gap: 10px;
   align-items: center;
 }

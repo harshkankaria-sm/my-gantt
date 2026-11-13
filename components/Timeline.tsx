@@ -1,7 +1,7 @@
 "use client";
 
 import { Fragment, useEffect, useRef, type CSSProperties } from "react";
-import { addDays, diff, fmt, parse, todayStr, type ISODate } from "@/lib/dates";
+import { addDays, diff, fmt, isWknd, parse, todayStr, type ISODate } from "@/lib/dates";
 import { editProject, toggleExpanded } from "@/lib/edit";
 import { current, isLate, planAll } from "@/lib/plan";
 import { STAGES } from "@/lib/stages";
@@ -52,7 +52,7 @@ export function Board({ state, onEdit, onAdvance }: BoardProps) {
   // Visible range: Monday a week before the earliest date → Sunday a week after the latest.
   let lo: ISODate = today;
   let hi: ISODate = today;
-  const plans = state ? planAll(state.projects, today) : {};
+  const plans = state ? planAll(state.projects) : {};
   if (state) {
     for (const p of state.projects) {
       const plan = plans[p.id];
@@ -168,6 +168,9 @@ export function Board({ state, onEdit, onAdvance }: BoardProps) {
                   const ss = p.stages[st.key];
                   const late = isLate(st, ss, r, plan, today);
                   const w = (diff(r.start, r.end) + 1) * DAYW - 4;
+                  // Weekends inside the bar, dimmed so the bar doesn't read as more working days.
+                  const wkds: ISODate[] = [];
+                  for (let d = r.start; d <= r.end; d = addDays(d, 1)) if (isWknd(d)) wkds.push(d);
                   return (
                     <div
                       key={st.key}
@@ -176,6 +179,9 @@ export function Board({ state, onEdit, onAdvance }: BoardProps) {
                       title={`${st.name} · due ${fmt(r.end)}`}
                       onClick={() => onEdit(p.id, st.key)}
                     >
+                      {wkds.map((d) => (
+                        <i key={d} className={s.wkd} style={{ left: diff(r.start, d) * DAYW - 2, width: DAYW }} />
+                      ))}
                       {w >= 44 && (
                         <span>
                           {ss.status === "done" ? "✓ " : ""}

@@ -2,11 +2,12 @@
 
 import { useEffect, useRef, type CSSProperties } from "react";
 import type { ISODate } from "@/lib/dates";
-import { editProject, moveProject, setDays, setStageStatus } from "@/lib/edit";
-import { est, stepDays } from "@/lib/plan";
+import { editProject, moveProject, setDays, setDue, setStageStatus } from "@/lib/edit";
+import { est, planProject, stepDays } from "@/lib/plan";
 import { STAGES, STATUS } from "@/lib/stages";
 import { update } from "@/lib/store";
 import type { Project, StageKey, Status } from "@/lib/types";
+import { DuePicker } from "./DuePicker";
 import s from "./Panel.module.css";
 
 const cx = (...c: (string | false | undefined)[]) => c.filter(Boolean).join(" ");
@@ -37,6 +38,7 @@ export function Panel({ project: p, index, count, today, stage, fresh, onStage, 
   }, [fresh]);
 
   const edit = (fn: (p: Project) => Project) => update((st) => editProject(st, p.id, fn));
+  const plan = planProject(p);
 
   return (
     <>
@@ -88,6 +90,7 @@ export function Panel({ project: p, index, count, today, stage, fresh, onStage, 
             <span />
             <span>Stage</span>
             <span>Days</span>
+            <span>Due</span>
             <span>Status</span>
           </div>
           {STAGES.map((def) => {
@@ -122,6 +125,19 @@ export function Panel({ project: p, index, count, today, stage, fresh, onStage, 
                     onBlur={(e) => {
                       // Show the saved (clamped) value, e.g. after clearing the field or typing 99.
                       e.target.value = String(p.stages[def.key].est);
+                    }}
+                  />
+                )}
+                {/* Verification's deadline is the project deadline, set above. */}
+                {def.key === "verify" || !plan.due[def.key] ? (
+                  <span />
+                ) : (
+                  <DuePicker
+                    label={`${def.name} deadline`}
+                    value={plan.due[def.key]!}
+                    onPick={(v) => {
+                      edit((q) => setDue(q, def.key, v));
+                      onStage(def.key);
                     }}
                   />
                 )}

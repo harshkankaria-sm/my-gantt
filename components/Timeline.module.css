@@ -61,7 +61,7 @@
   position: relative;
   flex: none;
   background-image:
-    repeating-linear-gradient(90deg, transparent 0 180px, rgba(255, 255, 255, 0.025) 180px 252px),
+    repeating-linear-gradient(90deg, transparent 0 180px, rgba(0, 0, 0, 0.32) 180px 252px),
     repeating-linear-gradient(90deg, rgba(255, 255, 255, 0.035) 0 1px, transparent 1px 36px);
 }
 
@@ -111,6 +111,9 @@
 }
 .dh.wk b {
   color: var(--faint);
+}
+.dh.wk:not(.today) {
+  opacity: 0.55;
 }
 .dh.mon b {
   color: var(--text);
@@ -201,8 +204,18 @@
   white-space: nowrap;
 }
 .seg span {
+  position: relative;
   overflow: hidden;
   text-overflow: ellipsis;
+}
+/* Weekend inside a bar: dimmed, so the bar doesn't read as more working days. */
+.wkd {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  background: var(--panel);
+  opacity: 0.68;
+  pointer-events: none;
 }
 .seg:hover {
   filter: brightness(1.15);

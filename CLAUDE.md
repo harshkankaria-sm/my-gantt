@@ -14,8 +14,8 @@ A single-user planner: a new project's deadline becomes a stage-by-stage plan.
 
 ## Rules
 - **Pain-point-first.** Build only what's in product_sense §6. No extra labels, subtitles, counters, tooltips, settings or buttons. If something seems needed, stop and propose it. The order is: pain point in §3 → ideate → add to §6 → build.
-- **No new inputs or rules without an explicit yes.** The deadline is the only date the user enters.
-- Planning: post-dev backward from the deadline; pre-dev forward from today; each project planned on its own; priority is row order only. Working days are Mon–Fri.
+- **No new inputs or rules without an explicit yes.** The user enters the project deadline, and optionally a deadline per stage or step.
+- Planning: every stage and step backward from the project deadline; a deadline the user sets stays put; nothing is planned from today; each project planned on its own; priority is row order only. Working days are Mon–Fri.
 - No backend. State lives in `localStorage`, behind `lib/store.ts`.
 - Keep the planning logic pure and in `lib/`, with Vitest test files (written, but run only when the user asks).
 - Deployed on Vercel. Access `localStorage` only on the client, never during server render.

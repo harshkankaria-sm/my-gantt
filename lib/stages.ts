@@ -7,7 +7,7 @@ export interface StageDef {
   color: string;
   /** Default working days. */
   est: number;
-  /** pre = mine, planned forward from today · post = others', planned backward from the deadline */
+  /** pre = mine (ends by "handover by") · post = others' */
   phase: "pre" | "post";
 }
 

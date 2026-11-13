@@ -37,6 +37,12 @@ export const setDays = (p: Project, k: StageKey, v: number): Project => ({
   stages: { ...p.stages, [k]: { ...p.stages[k], est: clampDays(v) } },
 });
 
+/** A stage's deadline. It stays put; "" clears it, so it's worked out again. Weekends move to Friday. */
+export const setDue = (p: Project, k: StageKey, v: ISODate): Project => ({
+  ...p,
+  stages: { ...p.stages, [k]: { ...p.stages[k], due: v ? toWork(v) : undefined } },
+});
+
 export const setStageStatus = (p: Project, k: StageKey, v: Status, today: ISODate): Project => ({
   ...p,
   stages: { ...p.stages, [k]: setStatus(p.stages[k], v, today) },
@@ -68,6 +74,10 @@ export const editSub = (p: Project, id: string, fn: (s: SubMilestone) => SubMile
   ...p,
   subs: p.subs.map((s) => (s.id === id ? fn(s) : s)),
 });
+
+/** A step's deadline. It stays put; "" clears it, so it's worked out again. Weekends move to Friday. */
+export const setSubDue = (p: Project, id: string, v: ISODate): Project =>
+  editSub(p, id, (s) => ({ ...s, due: v ? toWork(v) : undefined }));
 
 export const removeSub = (p: Project, id: string): Project => ({
   ...p,

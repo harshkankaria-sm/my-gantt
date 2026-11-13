@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { addProject, clampDays, editProject, moveProject, newProject, setDays, setStageStatus } from "./edit";
+import { addProject, clampDays, editProject, moveProject, newProject, setDays, setDue, setStageStatus } from "./edit";
 import { planAll } from "./plan";
 import { makeProject } from "./store";
 import type { AppState } from "./types";
@@ -55,8 +55,8 @@ describe("moveProject (priority)", () => {
 
   it("never moves any project's dates", () => {
     const s = three();
-    const before = planAll(s.projects, TODAY);
-    const after = planAll(moveProject(s, s.projects[2].id, 0).projects, TODAY);
+    const before = planAll(s.projects);
+    const after = planAll(moveProject(s, s.projects[2].id, 0).projects);
     expect(after).toEqual(before);
   });
 
@@ -81,5 +81,11 @@ describe("stage edits", () => {
     expect(next.projects[1].stages.prd).toEqual({ est: 3, status: "doing", startedOn: TODAY });
     expect(next.projects[0]).toBe(s.projects[0]);
     expect(s.projects[1].stages.prd).toEqual({ est: 5, status: "todo" });
+  });
+
+  it("sets and clears a stage's deadline; a weekend moves to Friday", () => {
+    const p = setDue(makeProject("A", "2026-11-30"), "solution", "2026-11-15");
+    expect(p.stages.solution.due).toBe("2026-11-13");
+    expect(setDue(p, "solution", "").stages.solution.due).toBeUndefined();
   });
 });

@@ -59,6 +59,13 @@ export const spanEnd = (start: ISODate, n: number): ISODate => {
   return e;
 };
 
+/** First day of a span of n working days ending on end. */
+export const spanStart = (end: ISODate, n: number): ISODate => {
+  let s = end;
+  for (let c = 1; c < n; c++) s = prevWork(s);
+  return s;
+};
+
 /** "30 Nov" */
 export const fmt = (s: ISODate): string => {
   const d = parse(s);

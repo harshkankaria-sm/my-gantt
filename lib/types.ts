@@ -21,6 +21,8 @@ export interface StageState {
   status: Status;
   startedOn?: ISODate;
   doneOn?: ISODate;
+  /** Deadline the user set; it stays put. Without one, it's worked out backward from the project deadline. */
+  due?: ISODate;
 }
 
 export interface SubMilestone {
@@ -30,6 +32,8 @@ export interface SubMilestone {
   /** Working days, one of STEP_DAYS. Steps run one after another inside their stage. */
   days: number;
   done: boolean;
+  /** Deadline the user set; it stays put. Without one, it's where the next step starts. */
+  due?: ISODate;
 }
 
 export interface Project {
@@ -49,10 +53,12 @@ export interface Range {
   end: ISODate;
 }
 
-/** A project's planned dates. A stage with 0 days is null. */
+/** A project's dates as shown. A stage with 0 days is null. */
 export type Plan = Record<StageKey, Range | null> & {
   /** The working day before dev starts. */
   handoverBy: ISODate;
+  /** Each stage's deadline (set or worked out); null for a stage with 0 days. */
+  due: Record<StageKey, ISODate | null>;
 };
 
 /** Array order is priority (row order only). */

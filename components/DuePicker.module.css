@@ -1,0 +1,29 @@
+.due {
+  position: relative;
+  display: inline-flex;
+  flex: none;
+}
+.btn {
+  width: 26px;
+  height: 26px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid transparent;
+  background: transparent;
+  color: var(--muted);
+  border-radius: 6px;
+  cursor: pointer;
+}
+.btn:hover {
+  color: var(--text);
+  border-color: var(--line);
+}
+/* Kept in the layout (not display:none) so showPicker() can anchor to it. */
+.input {
+  position: absolute;
+  inset: 0;
+  opacity: 0;
+  pointer-events: none;
+  color-scheme: dark;
+}

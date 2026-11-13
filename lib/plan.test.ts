@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { fmt, isWknd, nextWork, prevWork, spanEnd, diff } from "./dates";
+import { fmt, isWknd, nextWork, prevWork, spanEnd, spanStart, diff } from "./dates";
 import { advance, current, est, isLate, planAll, planProject, setStatus, stepDays } from "./plan";
 import { stageDef } from "./stages";
 import { makeProject, uid } from "./store";
@@ -35,7 +35,7 @@ function seed(): AppState {
   return { projects };
 }
 
-// Nov 2026: Mondays are 9, 16, 23, 30. Today is Wed 11 Nov.
+// Nov 2026: Mondays are 2, 9, 16, 23, 30. Today is Wed 11 Nov.
 const TODAY = "2026-11-11";
 
 // Engine tests pin PRD at 1 day (no steps) so they don't depend on the default.
@@ -47,7 +47,7 @@ const proj = (edit?: (p: Project) => void): Project => {
   return p;
 };
 
-const range = (p: Project, k: StageKey, today = TODAY) => planProject(p, today)[k];
+const range = (p: Project, k: StageKey) => planProject(p)[k];
 
 describe("working days", () => {
   it("skips weekends", () => {
@@ -57,6 +57,8 @@ describe("working days", () => {
     expect(prevWork("2026-11-16")).toBe("2026-11-13");
     expect(spanEnd("2026-11-12", 3)).toBe("2026-11-16");
     expect(spanEnd("2026-11-12", 1)).toBe("2026-11-12");
+    expect(spanStart("2026-11-16", 3)).toBe("2026-11-12");
+    expect(spanStart("2026-11-12", 1)).toBe("2026-11-12");
   });
 
   it("formats and diffs", () => {
@@ -70,9 +72,10 @@ describe("stages with steps", () => {
     const p = makeProject("Test", "2026-11-30"); // PRD steps 0.5 + 1 + 1 + 2 + 0.5
     expect(stepDays(p, "prd")).toBe(5);
     expect(est(p, stageDef("prd"))).toBe(5);
+    expect(range(p, "prd")).toEqual({ start: "2026-11-05", end: "2026-11-11" });
     p.subs[0].days = 1; // 5.5 → 6
     expect(est(p, stageDef("prd"))).toBe(6);
-    expect(range(p, "prd")).toEqual({ start: "2026-11-11", end: "2026-11-18" });
+    expect(range(p, "prd")).toEqual({ start: "2026-11-04", end: "2026-11-11" });
   });
 
   it("use their own days when they have no steps", () => {
@@ -91,110 +94,154 @@ describe("stages with steps", () => {
   });
 });
 
-describe("post-dev: backward from the deadline", () => {
-  it("lays out verify → release → QA → dev and sets handoverBy", () => {
-    const plan = planProject(proj(), TODAY);
+describe("backward from the deadline", () => {
+  it("lays out every stage back from the deadline and sets handoverBy", () => {
+    const plan = planProject(proj());
     expect(plan.verify).toEqual({ start: "2026-11-30", end: "2026-11-30" });
     expect(plan.release).toEqual({ start: "2026-11-27", end: "2026-11-27" });
     expect(plan.qa).toEqual({ start: "2026-11-25", end: "2026-11-26" });
     expect(plan.dev).toEqual({ start: "2026-11-18", end: "2026-11-24" });
     expect(plan.handoverBy).toBe("2026-11-17");
+    expect(plan.handover).toEqual({ start: "2026-11-17", end: "2026-11-17" });
+    expect(plan.solution).toEqual({ start: "2026-11-13", end: "2026-11-16" });
+    expect(plan.review).toEqual({ start: "2026-11-12", end: "2026-11-12" });
+    expect(plan.prd).toEqual({ start: "2026-11-11", end: "2026-11-11" });
+    expect(plan.due.solution).toBe("2026-11-16");
   });
 
   it("moves a weekend deadline back to Friday", () => {
-    const plan = planProject(proj((p) => (p.deadline = "2026-11-29")), TODAY);
+    const plan = planProject(proj((p) => (p.deadline = "2026-11-29")));
     expect(plan.verify).toEqual({ start: "2026-11-27", end: "2026-11-27" });
     expect(plan.dev).toEqual({ start: "2026-11-17", end: "2026-11-23" });
     expect(plan.handoverBy).toBe("2026-11-16");
   });
 
   it("skips a stage with 0 days", () => {
-    const plan = planProject(proj((p) => (p.stages.qa.est = 0)), TODAY);
+    const plan = planProject(proj((p) => (p.stages.qa.est = 0)));
     expect(plan.qa).toBeNull();
+    expect(plan.due.qa).toBeNull();
     expect(plan.dev).toEqual({ start: "2026-11-20", end: "2026-11-26" });
     expect(plan.handoverBy).toBe("2026-11-19");
+    const pre = planProject(proj((p) => (p.stages.review.est = 0)));
+    expect(pre.review).toBeNull();
+    expect(pre.prd).toEqual({ start: "2026-11-12", end: "2026-11-12" });
   });
 });
 
-describe("pre-dev: forward from today", () => {
-  it("plans not-started stages from today", () => {
-    const plan = planProject(proj(), TODAY);
-    expect(plan.prd).toEqual({ start: "2026-11-11", end: "2026-11-11" });
-    expect(plan.review).toEqual({ start: "2026-11-12", end: "2026-11-12" });
-    expect(plan.solution).toEqual({ start: "2026-11-13", end: "2026-11-16" });
-    expect(plan.handover).toEqual({ start: "2026-11-17", end: "2026-11-17" });
+describe("deadlines the user sets", () => {
+  it("stay put, and the stages before follow them", () => {
+    const p = proj((p) => (p.stages.solution.due = "2026-11-12"));
+    expect(range(p, "solution")).toEqual({ start: "2026-11-11", end: "2026-11-12" });
+    expect(range(p, "review")).toEqual({ start: "2026-11-10", end: "2026-11-10" });
+    expect(range(p, "prd")).toEqual({ start: "2026-11-09", end: "2026-11-09" });
+    expect(range(p, "handover")).toEqual({ start: "2026-11-17", end: "2026-11-17" });
   });
 
-  it("starts on Monday when today is a weekend", () => {
-    const plan = planProject(proj(), "2026-11-14");
-    expect(plan.prd).toEqual({ start: "2026-11-16", end: "2026-11-16" });
-    expect(plan.handover).toEqual({ start: "2026-11-20", end: "2026-11-20" });
+  it("stay put when the project deadline moves; worked-out ones move", () => {
+    const p = proj((p) => {
+      p.stages.solution.due = "2026-11-12";
+      p.deadline = "2026-12-04";
+    });
+    const plan = planProject(p);
+    expect(plan.dev).toEqual({ start: "2026-11-24", end: "2026-11-30" });
+    expect(plan.handover).toEqual({ start: "2026-11-23", end: "2026-11-23" });
+    expect(plan.solution).toEqual({ start: "2026-11-11", end: "2026-11-12" });
   });
 
-  it("skips a stage with 0 days", () => {
-    const plan = planProject(proj((p) => (p.stages.review.est = 0)), TODAY);
-    expect(plan.review).toBeNull();
-    expect(plan.solution).toEqual({ start: "2026-11-12", end: "2026-11-13" });
+  it("move from a weekend to Friday", () => {
+    expect(range(proj((p) => (p.stages.solution.due = "2026-11-15")), "solution")).toEqual({
+      start: "2026-11-12",
+      end: "2026-11-13",
+    });
+  });
+
+  it("can leave gaps; handoverBy follows dev", () => {
+    const plan = planProject(proj((p) => (p.stages.dev.due = "2026-11-20")));
+    expect(plan.dev).toEqual({ start: "2026-11-16", end: "2026-11-20" });
+    expect(plan.qa).toEqual({ start: "2026-11-25", end: "2026-11-26" });
+    expect(plan.handoverBy).toBe("2026-11-13");
+    expect(plan.handover).toEqual({ start: "2026-11-13", end: "2026-11-13" });
+  });
+
+  it("verification's is always the project deadline", () => {
+    expect(range(proj((p) => (p.stages.verify.due = "2026-11-20")), "verify")).toEqual({
+      start: "2026-11-30",
+      end: "2026-11-30",
+    });
   });
 });
 
-describe("done / doing anchoring", () => {
-  it("keeps a doing stage on its start date", () => {
+describe("started and done stages", () => {
+  it("a started stage starts when it started and ends on its deadline", () => {
     const p = proj((p) => {
       p.stages.prd = { est: 2, status: "doing", startedOn: "2026-11-09" };
     });
-    expect(range(p, "prd")).toEqual({ start: "2026-11-09", end: "2026-11-10" });
-    expect(range(p, "review")).toEqual({ start: "2026-11-11", end: "2026-11-11" });
+    expect(range(p, "prd")).toEqual({ start: "2026-11-09", end: "2026-11-11" });
+    expect(range(p, "review")).toEqual({ start: "2026-11-12", end: "2026-11-12" });
   });
 
-  it("starts the next stage no earlier than today", () => {
+  it("a stage started after its deadline sits on its deadline", () => {
     const p = proj((p) => {
-      p.stages.prd = { est: 2, status: "doing", startedOn: "2026-11-05" };
+      p.stages.prd = { est: 1, status: "doing", startedOn: "2026-11-13" };
     });
-    expect(range(p, "prd")).toEqual({ start: "2026-11-05", end: "2026-11-06" });
-    expect(range(p, "review")).toEqual({ start: "2026-11-11", end: "2026-11-11" });
-  });
-
-  it("plans a doing stage with no start date from today", () => {
-    const p = proj((p) => (p.stages.prd.status = "doing"));
     expect(range(p, "prd")).toEqual({ start: "2026-11-11", end: "2026-11-11" });
   });
 
-  it("keeps a done stage on its real dates", () => {
+  it("a started stage with no start date keeps its planned dates", () => {
+    expect(range(proj((p) => (p.stages.prd.status = "doing")), "prd")).toEqual({
+      start: "2026-11-11",
+      end: "2026-11-11",
+    });
+  });
+
+  it("a done stage shows its real dates and doesn't move the others", () => {
     const p = proj((p) => {
       p.stages.prd = { est: 3, status: "done", startedOn: "2026-11-05", doneOn: "2026-11-06" };
     });
     expect(range(p, "prd")).toEqual({ start: "2026-11-05", end: "2026-11-06" });
-    expect(range(p, "review")).toEqual({ start: "2026-11-11", end: "2026-11-11" });
+    expect(range(p, "review")).toEqual({ start: "2026-11-12", end: "2026-11-12" });
   });
 
-  it("puts a done stage with no dates on the working day before today", () => {
-    const p = proj((p) => (p.stages.prd.status = "done"));
-    expect(range(p, "prd")).toEqual({ start: "2026-11-10", end: "2026-11-10" });
-    expect(range(p, "review")).toEqual({ start: "2026-11-11", end: "2026-11-11" });
+  it("a done stage with no dates keeps its planned dates", () => {
+    expect(range(proj((p) => (p.stages.prd.status = "done")), "prd")).toEqual({
+      start: "2026-11-11",
+      end: "2026-11-11",
+    });
+  });
+
+  it("nothing depends on today", () => {
+    const p = proj();
+    expect(planProject(p)).toEqual(planProject(structuredClone(p)));
   });
 });
 
 describe("late", () => {
   const late = (p: Project, k: StageKey, today = TODAY) => {
-    const plan = planProject(p, today);
+    const plan = planProject(p);
     return isLate(stageDef(k), p.stages[k], plan[k], plan, today);
   };
 
-  it("is not late when pre-dev ends on handoverBy", () => {
+  it("is not late before its start", () => {
+    expect(late(proj(), "prd")).toBe(false);
     expect(late(proj(), "handover")).toBe(false);
   });
 
-  it("is late when pre-dev runs past handoverBy", () => {
-    const p = proj((p) => (p.stages.solution.est = 3));
-    expect(late(p, "handover")).toBe(true);
+  it("is late when not started and its start has passed", () => {
+    const p = proj((p) => (p.stages.prd.est = 2)); // 10–11 Nov
+    expect(late(p, "prd")).toBe(true);
+    p.stages.prd = { est: 2, status: "doing", startedOn: "2026-11-10" };
+    expect(late(p, "prd")).toBe(false);
   });
 
-  it("is late when a stage is past its end and not done", () => {
+  it("is late when pre-dev runs past handoverBy", () => {
+    expect(late(proj((p) => (p.stages.handover.due = "2026-11-18")), "handover")).toBe(true);
+  });
+
+  it("is late when past its deadline and not done", () => {
     const p = proj((p) => {
       p.stages.prd = { est: 2, status: "doing", startedOn: "2026-11-05" };
     });
-    expect(late(p, "prd")).toBe(true);
+    expect(late(p, "prd", "2026-11-12")).toBe(true);
     expect(late(proj(), "verify", "2026-12-01")).toBe(true);
   });
 
@@ -202,7 +249,7 @@ describe("late", () => {
     const p = proj((p) => {
       p.stages.prd = { est: 2, status: "done", startedOn: "2026-11-05", doneOn: "2026-11-06" };
     });
-    expect(late(p, "prd")).toBe(false);
+    expect(late(p, "prd", "2026-11-20")).toBe(false);
   });
 
   it("is not late for a 0-day stage", () => {
@@ -232,10 +279,10 @@ describe("advance (✓ Done)", () => {
     expect(next.stages.solution.status).toBe("doing");
   });
 
-  it("re-plans pre-dev from today", () => {
-    const next = advance(proj(), TODAY);
-    expect(range(next, "review")).toEqual({ start: "2026-11-11", end: "2026-11-11" });
-    expect(range(next, "solution")).toEqual({ start: "2026-11-12", end: "2026-11-13" });
+  it("doesn't move later stages' deadlines", () => {
+    const p = proj();
+    const next = advance(p, TODAY);
+    expect(planProject(next).due).toEqual(planProject(p).due);
   });
 
   it("does nothing when every stage is done", () => {
@@ -256,25 +303,29 @@ describe("setStatus", () => {
     expect(setStatus({ est: 1, status: "doing", startedOn: "2026-11-09" }, "done", TODAY))
       .toEqual({ est: 1, status: "done", startedOn: "2026-11-09", doneOn: TODAY });
   });
+
+  it("keeps the deadline", () => {
+    expect(setStatus({ est: 1, status: "todo", due: "2026-11-20" }, "done", TODAY).due).toBe("2026-11-20");
+  });
 });
 
 describe("each project planned on its own", () => {
   it("row order doesn't change any project's dates", () => {
     const [a, b, c] = seed().projects;
-    const one = planAll([a, b, c], TODAY);
-    const two = planAll([c, a, b], TODAY);
+    const one = planAll([a, b, c]);
+    const two = planAll([c, a, b]);
     for (const p of [a, b, c]) {
       expect(two[p.id]).toEqual(one[p.id]);
-      expect(one[p.id]).toEqual(planProject(p, TODAY));
+      expect(one[p.id]).toEqual(planProject(p));
     }
   });
 });
 
 describe("seed data", () => {
-  it("Horoscope: PRD 11–12 Nov, handover 18 Nov, handoverBy 17 Nov", () => {
-    const plan = planProject(seed().projects[0], TODAY);
-    expect(plan.prd).toEqual({ start: "2026-11-11", end: "2026-11-12" });
-    expect(plan.handover).toEqual({ start: "2026-11-18", end: "2026-11-18" });
+  it("Horoscope: PRD started 11 Nov, due 11 Nov; handover 17 Nov = handoverBy", () => {
+    const plan = planProject(seed().projects[0]);
+    expect(plan.prd).toEqual({ start: "2026-11-11", end: "2026-11-11" });
+    expect(plan.handover).toEqual({ start: "2026-11-17", end: "2026-11-17" });
     expect(plan.handoverBy).toBe("2026-11-17");
   });
 });

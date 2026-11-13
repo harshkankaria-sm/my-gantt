@@ -2,11 +2,12 @@
 
 import { Fragment, type CSSProperties, type ReactNode } from "react";
 import { fmt, type ISODate } from "@/lib/dates";
-import { addSub, editProject, editSub, newSub, removeSub, setGroupOpen } from "@/lib/edit";
+import { addSub, editProject, editSub, newSub, removeSub, setGroupOpen, setSubDue } from "@/lib/edit";
 import { STEP_DAYS, SUB_STAGES, stageDef } from "@/lib/stages";
 import { update } from "@/lib/store";
-import { groupItems, groupOpen, subSpot } from "@/lib/subs";
+import { groupItems, groupOpen, stepEnds, subSpot } from "@/lib/subs";
 import type { Plan, Project, SubMilestone } from "@/lib/types";
+import { DuePicker } from "./DuePicker";
 import s from "./Timeline.module.css";
 
 export const DAYW = 36;
@@ -61,6 +62,7 @@ export function SubRows({ p, plan, lo, today, width, markers, onAdded }: SubRows
         const def = stageDef(k);
         const items = groupItems(p, k);
         const open = groupOpen(p, k);
+        const ends = stepEnds(p, plan, k);
         return (
           <Fragment key={k}>
             <div className={s.row}>
@@ -113,6 +115,13 @@ export function SubRows({ p, plan, lo, today, width, markers, onAdded }: SubRows
                         ),
                       )}
                     </select>
+                    {ends.has(sub.id) && (
+                      <DuePicker
+                        label="Deadline"
+                        value={ends.get(sub.id)!.date}
+                        onPick={(v) => edit((q) => setSubDue(q, sub.id, v))}
+                      />
+                    )}
                     <button
                       className={s.xbtn}
                       onClick={() => edit((q) => removeSub(q, sub.id))}
