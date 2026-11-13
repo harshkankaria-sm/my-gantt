@@ -3,14 +3,16 @@
 A single-user planner: a new project's deadline becomes a stage-by-stage plan.
 
 ## Read first, every chat
-1. `product_sense.md`: what and why. Pain points are in §3; scope, with the pain point each element serves, is in §6.
-2. `PLAN.md`: build phases. Work only on the phase you were asked to start, and tick it off in the tracker when it's done.
-3. `prototype.html`: the reference for UI, UX and planning logic (`planAll()`). Match it unless product_sense says otherwise.
+1. `product_sense.md`: what and why. Pain points are in §3, planning rules in §5, and scope, with the pain point each element serves, in §6.
+2. `PLAN.md`: how a change gets made, and how to deploy.
+3. `lib/plan.ts` and `lib/subs.ts`: the planning logic. The app itself is the UI reference.
+
+`history/` holds the decision log and the original build plan and prototype. It's reference only; don't follow it.
 
 ## Working agreement
-- **Don't run Node, npm, npx, tests, builds or the dev server** unless the user asks in this chat. The exceptions: Phase 0 runs `create-next-app` and `npm install`, and every phase ends with a type check (`npx tsc --noEmit`), with any errors fixed. The user runs the app and reports fixes.
+- **Don't run Node, npm, npx, tests, builds or the dev server** unless the user asks in this chat. The exception: every change ends with a type check (`npx tsc --noEmit`), with any errors fixed. The user runs the app and reports fixes.
 - Node lives at `~/.local/node/bin`. If `node` isn't found, prefix commands with `PATH="$HOME/.local/node/bin:$PATH"`.
-- Commit or push only when the user asks.
+- Commit, push or deploy only when the user asks. Log each change in `history/decisions.md`.
 
 ## Rules
 - **Pain-point-first.** Build only what's in product_sense §6. No extra labels, subtitles, counters, tooltips, settings or buttons. If something seems needed, stop and propose it. The order is: pain point in §3 → ideate → add to §6 → build.

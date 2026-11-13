@@ -1,6 +1,6 @@
 @import "tailwindcss";
 
-/* Design tokens, ported from prototype.html. Dark theme only. */
+/* Design tokens. Dark theme only. */
 :root {
   --bg: #09090b;
   --panel: #111114;
